@@ -7,8 +7,8 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing/protocol/packp/sideband"
 )
 
-// Sync creates an ephemeral Synchronizer and performs a Sync with the given
-// parameters. See Synchronizer.Sync for details.
-func Sync(ctx context.Context, path, origin, branch string, progress sideband.Progress) error {
-	return New(path, origin, branch, os.Stdout).Sync(ctx)
+// Pull creates an ephemeral Synchronizer and performs a Pull with the given
+// parameters. See Synchronizer.Pull for details.
+func Pull(ctx context.Context, path, origin, branch string, progress sideband.Progress) error {
+	return New(path, origin, branch, os.Stdout).Pull(ctx)
 }

@@ -1,19 +1,10 @@
 package main
 
 import (
-	"context"
-	"flag"
 	"fmt"
 	"os"
-
-	"github.com/gentlemanautomaton/gitsync"
+	"strings"
 )
-
-func usage(message string) {
-	fmt.Printf("%s\n\n", message)
-	flag.Usage()
-	os.Exit(2)
-}
 
 func abort(err error) {
 	fmt.Printf("%v\n", err)
@@ -21,31 +12,28 @@ func abort(err error) {
 }
 
 func main() {
-	var (
-		repo   string
-		origin string
-		branch string
-	)
-
-	flag.StringVar(&repo, "repo", "", "path of directory to sync")
-	flag.StringVar(&origin, "origin", "", "URL of origin repository")
-	flag.StringVar(&branch, "branch", "master", "branch to sync with")
-	flag.Parse()
-
-	if repo == "" {
-		usage("No repository specified.")
+	usage := func(message string) {
+		fmt.Fprintf(os.Stderr,
+			"%s\n\n"+
+				"usage: %s <command>\n"+
+				"       %s mirror -repo <path> -origin <url> [-branch <branch>]\n",
+			message, os.Args[0], os.Args[0])
+		os.Exit(2)
 	}
 
-	if origin == "" {
-		usage("No origin specified.")
+	if len(os.Args) < 2 {
+		usage("No command specified.")
 	}
 
-	if branch == "" {
-		usage("No branch specified.")
-	}
+	command := strings.ToLower(os.Args[1])
+	args := os.Args[2:]
 
-	err := gitsync.Sync(context.Background(), repo, origin, branch, os.Stdout)
-	if err != nil {
-		abort(err)
+	switch command {
+	case "mirror":
+		mirror(command, args)
+	//case "update":
+	//	update(command, args)
+	default:
+		usage(fmt.Sprintf("\"%s\" is an unrecognized command.", command))
 	}
 }

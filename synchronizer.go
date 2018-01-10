@@ -40,14 +40,14 @@ func New(path, origin, branch string, progress sideband.Progress) *Synchronizer 
 	}
 }
 
-// Sync attempts to update the local file system to match a particular branch
+// Pull attempts to update the local file system to match a particular branch
 // on the origin. It performs the equivalent of git clone, pull and checkout as
 // necessary to accomplish this.
 //
 // Sync is destructive. Files within the local copy may be discarded in order
 // for sync to accomplish its goal. In the case of failure sync may attempt to
 // destroy the local copy and re-clone.
-func (s *Synchronizer) Sync(ctx context.Context) error {
+func (s *Synchronizer) Pull(ctx context.Context) error {
 	start := time.Now()
 
 	repo, head, cloned, err := s.prepare(ctx)
