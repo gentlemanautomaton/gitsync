@@ -11,6 +11,7 @@ import (
 	"gopkg.in/src-d/go-git.v4/config"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/protocol/packp/sideband"
+	"gopkg.in/src-d/go-git.v4/plumbing/transport"
 )
 
 // Synchronizer is responsible for keeping local files in sync with a remote.
@@ -20,34 +21,38 @@ type Synchronizer struct {
 	origin   string
 	branch   plumbing.ReferenceName
 	progress sideband.Progress
+	auth     transport.AuthMethod
 }
 
-// New returns a Synchronizer for the repository path, origin and branch.
+// New returns a Synchronizer for the repository at the given path.
+//
 // The path should specify a file system directory to which the contents of
 // the remote branch will be mirrored.
 //
-// If progress is non-nil, textual progress updates will be written to it.
+// The given origin will be used to access the remote.
 //
-// New is nondestructive. Calls to Sync will perform file system initialization
-// and cloning as needed.
-func New(path, origin, branch string, progress sideband.Progress) *Synchronizer {
+// New is nondestructive. Calls to CloneOrPull will perform file system
+// initialization and cloning as needed.
+func New(path, origin string, options ...Option) *Synchronizer {
 	path, _ = filepath.Abs(path)
-	return &Synchronizer{
-		path:     path,
-		origin:   origin,
-		branch:   plumbing.ReferenceName(fmt.Sprintf("refs/heads/%s", branch)),
-		progress: progress,
+	s := &Synchronizer{
+		path:   path,
+		origin: origin,
 	}
+	for _, opt := range options {
+		opt(s)
+	}
+	return s
 }
 
-// Pull attempts to update the local file system to match a particular branch
-// on the origin. It performs the equivalent of git clone, pull and checkout as
-// necessary to accomplish this.
+// CloneOrPull attempts to update the local file system to match a particular
+// branch on the origin. It performs the equivalent of git clone, pull and
+// checkout as necessary to accomplish this.
 //
 // Sync is destructive. Files within the local copy may be discarded in order
 // for sync to accomplish its goal. In the case of failure sync may attempt to
 // destroy the local copy and re-clone.
-func (s *Synchronizer) Pull(ctx context.Context) error {
+func (s *Synchronizer) CloneOrPull(ctx context.Context) error {
 	start := time.Now()
 
 	repo, head, cloned, err := s.prepare(ctx)
@@ -84,7 +89,9 @@ func (s *Synchronizer) Pull(ctx context.Context) error {
 	s.printf("Pulling from %s\n", s.origin)
 	err = worktree.Pull(&git.PullOptions{
 		ReferenceName: s.branch,
-		Progress:      os.Stdout,
+		Progress:      s.progress,
+		Auth:          s.auth,
+		Force:         true,
 	})
 	switch err {
 	case nil:
@@ -151,6 +158,7 @@ func (s *Synchronizer) clone(ctx context.Context) (repo *git.Repository, err err
 		URL:           s.origin,
 		ReferenceName: s.branch,
 		Progress:      s.progress,
+		Auth:          s.auth,
 	})
 }
 
@@ -187,12 +195,14 @@ func (s *Synchronizer) delete() error {
 	return os.RemoveAll(gitPath)
 }
 
+/*
 func (s *Synchronizer) fetch(ctx context.Context, repo *git.Repository) error {
 	repo.FetchContext(ctx, &git.FetchOptions{
 		Progress: s.progress,
 	})
 	return nil
 }
+*/
 
 func (s *Synchronizer) updateOrigin(repo *git.Repository) error {
 	cfg := config.RemoteConfig{

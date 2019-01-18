@@ -45,7 +45,7 @@ func mirror(command string, args []string) {
 		usage("No branch specified.")
 	}
 
-	err := gitsync.Pull(context.Background(), repo, origin, branch, os.Stdout)
+	err := gitsync.CloneOrPull(context.Background(), repo, origin, gitsync.Branch(branch), gitsync.Progress(os.Stdout))
 	if err != nil {
 		abort(err)
 	}
